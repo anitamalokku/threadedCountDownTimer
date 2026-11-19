@@ -1,4 +1,3 @@
-
 function TimerCard({ timer }) {
   return (
     <article className="timer-card">

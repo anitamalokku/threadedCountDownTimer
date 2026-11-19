@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import TimerForm from './components/TimerForm.jsx'
 import TimerList from './components/TimerList.jsx'
 import { createTimer, getTimers } from './services/timerApi.js'
+import TimerFilter from './components/TimerFilter.jsx'
 import './App.css'
 
 function App() {
   const [timers, setTimers] = useState([])
   const [listError, setListError] = useState('')
+  const [filter, setFilter] = useState('All')
   const [isFormOpen, setIsFormOpen] = useState(false)
+
+    const STATUS_MAP = { Started: "Running", Paused: "Paused", Finished: "Completed",};
 
   useEffect(() => {
     getTimers()
@@ -43,6 +47,11 @@ function App() {
     }
   }
 
+const visibleTimers =
+  filter === "All"
+    ? timers
+    : timers.filter((t) => t.status === STATUS_MAP[filter]);
+
   return (
     <main className="app">
       <header className="page-title">
@@ -58,7 +67,8 @@ function App() {
           Add timer
         </button>
       </section>
-      <TimerList timers={timers} />
+      <TimerFilter value={filter} onChange={setFilter} />
+      <TimerList timers={visibleTimers} />
 
       {isFormOpen && (
         <div
