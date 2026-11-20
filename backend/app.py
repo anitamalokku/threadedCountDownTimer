@@ -1,13 +1,18 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from database import DEFAULT_DATABASE_PATH, create_timer, get_timers
+from database import DEFAULT_DATABASE_PATH, Database
+from repositories.timer_repository import TimerRepository
+from services.timer_service import TimerService
 
 
 def create_app(database_path=DEFAULT_DATABASE_PATH):
     app = Flask(__name__)
     app.config["DATABASE_PATH"] = database_path
     CORS(app)
+    database = Database(database_path)
+    timer_repository = TimerRepository(database)
+    timer_service = TimerService(timer_repository)
 
     @app.get("/api/health")
     def health():
@@ -15,7 +20,7 @@ def create_app(database_path=DEFAULT_DATABASE_PATH):
 
     @app.get("/api/timers")
     def list_timers():
-        timers = get_timers(app.config["DATABASE_PATH"])
+        timers = timer_service.list_timers()
         return jsonify([timer.to_dict() for timer in timers])
 
     @app.post("/api/timers")
@@ -24,23 +29,14 @@ def create_app(database_path=DEFAULT_DATABASE_PATH):
         if not isinstance(data, dict):
             return jsonify({"error": "Request body must be a JSON object."}), 400
 
-        name = data.get("name")
-        if not isinstance(name, str) or not name.strip():
-            return jsonify({"error": "Name must be a non-empty string."}), 400
+        try:
+            timer = timer_service.create_timer(
+                data.get("name"),
+                data.get("duration_seconds"),
+            )
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
 
-        duration_seconds = data.get("duration_seconds")
-        if (
-            isinstance(duration_seconds, bool)
-            or not isinstance(duration_seconds, int)
-            or duration_seconds <= 0
-        ):
-            return jsonify({"error": "duration_seconds must be a positive integer."}), 400
-
-        timer = create_timer(
-            name.strip(),
-            duration_seconds,
-            app.config["DATABASE_PATH"],
-        )
         return jsonify({"timer": timer.to_dict()}), 201
 
     return app
